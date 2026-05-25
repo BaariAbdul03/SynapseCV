@@ -27,11 +27,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Secret Scanning Audit
-      name: Check for accidental API keys or secrets exposure
+    - name: Check for accidental API keys or secrets exposure
       run: |
         # Scan files for typical Google Gemini or Stripe-like key prefixes
-        if grep -rniE "(AIzaSy[A-Za-z0-9_-]{33}|scv_[live|test]_[A-Za-z0-9]{20,})" app/ static/ templates/ tests/; then
+        if grep -rniE "(AIzaSy[A-Za-z0-9_-]{33}|scv_(live|test)_[A-Za-z0-9]{20,})" app/ static/ templates/ tests/; then
           echo "🚨 CRITICAL ERROR: Found potential plaintext API keys exposed in the codebase! Aborting build."
           exit 1
         else

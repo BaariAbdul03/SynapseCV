@@ -1,5 +1,15 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app
-from flask_login import login_user, logout_user, login_required, current_user
+from authlib.integrations.base_client.errors import OAuthError
+from flask import (
+    Blueprint,
+    current_app,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
+from flask_login import login_user, logout_user, login_required
 
 from app.extensions import db, oauth
 from app.models import User
@@ -23,6 +33,7 @@ def configure_oauth_clients(app):
         client_id=client_id,
         client_secret=client_secret,
         server_metadata_url=app.config.get("GOOGLE_DISCOVERY_URL"),
+        authorize_params={'prompt': 'select_account'},
         client_kwargs={'scope': 'openid email profile'},
     )
 
@@ -33,6 +44,48 @@ def external_url(endpoint, **values):
     if current_app.config.get("ENV") == "production":
         values["_scheme"] = "https"
     return url_for(endpoint, **values)
+
+
+def get_google_user_info(token):
+    """Extract Google OIDC profile data with robust fallbacks."""
+    user_info = token.get("userinfo")
+    if user_info:
+        return dict(user_info)
+
+    try:
+        parsed_user = oauth.google.parse_id_token(token)
+        if parsed_user:
+            return dict(parsed_user)
+    except Exception as parse_err:
+        current_app.logger.warning(
+            "Google id_token parsing did not return userinfo: %s",
+            parse_err,
+        )
+
+    resp = oauth.google.get('https://openidconnect.googleapis.com/v1/userinfo', token=token)
+    resp.raise_for_status()
+    return resp.json()
+
+
+@auth_bp.route('/oauth/status')
+def oauth_status():
+    """Return non-secret OAuth diagnostics for production troubleshooting."""
+    configure_oauth_clients(current_app)
+    client_id = current_app.config.get("GOOGLE_CLIENT_ID")
+    client_secret = current_app.config.get("GOOGLE_CLIENT_SECRET")
+
+    return jsonify({
+        "env": current_app.config.get("ENV"),
+        "google_client_id_configured": bool(client_id),
+        "google_client_secret_configured": bool(client_secret),
+        "google_client_id_suffix": client_id[-12:] if client_id else None,
+        "google_registered": "google" in getattr(oauth, "_clients", {}),
+        "redirect_uri": external_url('auth.google_authorize'),
+        "request_is_secure": request.is_secure,
+        "request_scheme": request.scheme,
+        "session_cookie_secure": current_app.config.get("SESSION_COOKIE_SECURE"),
+        "session_cookie_samesite": current_app.config.get("SESSION_COOKIE_SAMESITE"),
+    })
 
 # ==========================================================================
 # 1. Traditional Password Registration & Login Routes
@@ -115,11 +168,14 @@ def login_google():
     
     if not client_id or not client_secret:
         # SANDBOX DEV MODE: Render transition screen to prevent back-button loops
-        current_app.logger.warning("No Google OAuth secrets detected. Running in simulated Developer Sandbox Mode.")
+        current_app.logger.warning(
+            "No Google OAuth secrets detected. Running in simulated Developer Sandbox Mode."
+        )
         return render_template('auth/sandbox_auth.html')
 
     configure_oauth_clients(current_app)
     redirect_uri = external_url('auth.google_authorize')
+    current_app.logger.info("Starting Google OAuth flow with redirect_uri=%s", redirect_uri)
     return oauth.google.authorize_redirect(redirect_uri)
 
 
@@ -127,15 +183,19 @@ def login_google():
 def google_authorize():
     """Handles standard Google OAuth callback authorized tokens."""
     try:
+        if request.args.get("error"):
+            current_app.logger.warning(
+                "Google OAuth callback returned error=%s description=%s",
+                request.args.get("error"),
+                request.args.get("error_description"),
+            )
+            flash("Google sign-in was cancelled or denied.", "error")
+            return redirect(url_for('auth.login'))
+
         configure_oauth_clients(current_app)
         redirect_uri = external_url('auth.google_authorize')
         token = oauth.google.authorize_access_token(redirect_uri=redirect_uri)
-        user_info = token.get("userinfo")
-
-        if not user_info:
-            resp = oauth.google.get('https://openidconnect.googleapis.com/v1/userinfo')
-            resp.raise_for_status()
-            user_info = resp.json()
+        user_info = get_google_user_info(token)
         
         email = user_info.get("email")
         name = user_info.get("name", "Google User")
@@ -146,8 +206,24 @@ def google_authorize():
             return redirect(url_for('auth.login'))
             
         return handle_oauth_success(email, name, "google", sub)
+    except OAuthError as e:
+        current_app.logger.error(
+            "Google OAuth protocol failed: error=%s description=%s redirect_uri=%s",
+            getattr(e, "error", None),
+            getattr(e, "description", None),
+            external_url('auth.google_authorize'),
+            exc_info=True,
+        )
+        flash("Authentication via Google failed.", "error")
+        return redirect(url_for('auth.login'))
     except Exception as e:
-        current_app.logger.error(f"Google OAuth failed: {e}", exc_info=True)
+        current_app.logger.error(
+            "Google OAuth failed: %s redirect_uri=%s request_args=%s",
+            e,
+            external_url('auth.google_authorize'),
+            dict(request.args),
+            exc_info=True,
+        )
         flash("Authentication via Google failed.", "error")
         return redirect(url_for('auth.login'))
 

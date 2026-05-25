@@ -84,15 +84,16 @@ def create_app(config_class=None):
             db.create_all()
             ensure_database_compatibility()
             
-            # Pre-seed a default Recruiter Admin user if it doesn't exist
-            admin_email = "recruiter@example.com"
-            admin = User.query.filter_by(email=admin_email).first()
-            if not admin:
-                structlog.get_logger(__name__).info("Pre-seeding default Recruiter Admin account...")
-                admin = User(email=admin_email, name="Recruiter Admin")
-                admin.set_password("SecurePassword123")
-                db.session.add(admin)
-                db.session.commit()
+            # Keep a demo account local without creating public default credentials.
+            if app.config.get("ENV") != "production":
+                admin_email = "recruiter@example.com"
+                admin = User.query.filter_by(email=admin_email).first()
+                if not admin:
+                    structlog.get_logger(__name__).info("Pre-seeding default Recruiter Admin account...")
+                    admin = User(email=admin_email, name="Recruiter Admin")
+                    admin.set_password("SecurePassword123")
+                    db.session.add(admin)
+                    db.session.commit()
         except Exception as e:
             structlog.get_logger(__name__).error(f"Failed to auto-create database tables: {e}", exc_info=True)
     

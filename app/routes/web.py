@@ -1,10 +1,21 @@
 from flask import Blueprint, render_template, jsonify, request
 from flask_login import current_user
+from sqlalchemy import text
 from app.services.role_library import RoleLibrary
 from app.models import Analysis, RoleTemplate
 from app.extensions import db
 
 web_bp = Blueprint('web', __name__)
+
+
+@web_bp.route('/healthz')
+def healthz():
+    """Lightweight health check for Render and uptime monitors."""
+    try:
+        db.session.execute(text("SELECT 1"))
+        return jsonify({"status": "ok", "database": "ok"})
+    except Exception:
+        return jsonify({"status": "degraded", "database": "error"}), 503
 
 @web_bp.route('/')
 def index():
