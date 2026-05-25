@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to SynapseCV — Intelligent Recruitment Command Center</title>
+    
+    <!-- Centralized CSS Design System & Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-main: #060609;
+            --bg-surface: rgba(13, 13, 20, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            
+            --accent-primary: #6c5ce7;
+            --accent-secondary: #00d2d3;
+            --accent-glow: rgba(108, 92, 231, 0.15);
+            
+            --font-sans: 'Inter', sans-serif;
+            --font-heading: 'Outfit', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: #e2e8f0;
+            font-family: var(--font-sans);
+            line-height: 1.6;
+            overflow-x: hidden;
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(108, 92, 231, 0.1) 0%, transparent 45%),
+                radial-gradient(circle at 85% 85%, rgba(0, 210, 211, 0.08) 0%, transparent 45%);
+            background-attachment: fixed;
+        }
+
+        /* --- Header Navigation --- */
+        .header-nav {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 15px var(--accent-glow);
+            color: white;
+            font-weight: 800;
+            font-family: var(--font-heading);
+            font-size: 1.25rem;
+        }
+
+        .logo-text {
+            font-size: 1.4rem;
+            font-weight: 800;
+            font-family: var(--font-heading);
+            background: linear-gradient(to right, #ffffff, #c7c7d7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .auth-actions {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+        }
+
+        .btn-link {
+            color: #cbd5e0;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-link:hover {
+            color: white;
+        }
+
+        .btn-outline {
+            border: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.02);
+            color: white;
+            padding: 0.5rem 1.25rem;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        /* --- Hero Section --- */
+        .hero-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 4rem 2rem 2rem 2rem;
+            animation: heroFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes heroFadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .badge-premium {
+            background: rgba(108, 92, 231, 0.12);
+            border: 1px solid rgba(108, 92, 231, 0.25);
+            color: #a29bfe;
+            padding: 0.35rem 1rem;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 1.5rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 0 20px rgba(108, 92, 231, 0.05);
+        }
+
+        .hero-title {
+            font-family: var(--font-heading);
+            font-size: 3.5rem;
+            font-weight: 900;
+            line-height: 1.15;
+            letter-spacing: -0.03em;
+            color: white;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-title span {
+            background: linear-gradient(135deg, #a29bfe, var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: 1.15rem;
+            color: #a0aec0;
+            max-width: 680px;
+            margin-bottom: 2.5rem;
+            line-height: 1.6;
+        }
+
+        .cta-group {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 4rem;
+        }
+
+        @media (max-width: 640px) {
+            .hero-title { font-size: 2.5rem; }
+            .cta-group { flex-direction: column; width: 100%; gap: 1rem; }
+            .cta-group a { width: 100%; text-align: center; }
+        }
+
+        .btn-premium {
+            background: linear-gradient(135deg, var(--accent-primary), #5b4bc4);
+            color: white;
+            padding: 0.95rem 2rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(108, 92, 231, 0.35);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .btn-premium:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(108, 92, 231, 0.5);
+            background: linear-gradient(135deg, #7c6df2, var(--accent-primary));
+        }
+
+        .btn-premium-secondary {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 0.95rem 2rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .btn-premium-secondary:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+        }
+
+        /* --- Features Bento Grid --- */
+        .features-grid {
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto 5rem auto;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .features-grid { grid-template-columns: 1fr; }
+        }
+
+        .feature-card {
+            background: var(--bg-surface);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: left;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+        }
+
+        .feature-icon-wrapper {
+            width: 46px;
+            height: 46px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-secondary);
+            margin-bottom: 1.25rem;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover .feature-icon-wrapper {
+            background: rgba(0, 210, 211, 0.08);
+            border-color: rgba(0, 210, 211, 0.2);
+            color: var(--accent-secondary);
+            box-shadow: 0 0 10px rgba(0, 210, 211, 0.1);
+        }
+
+        .feature-card.primary-accent:hover .feature-icon-wrapper {
+            background: rgba(108, 92, 231, 0.12);
+            border-color: rgba(108, 92, 231, 0.25);
+            color: #a29bfe;
+            box-shadow: 0 0 10px rgba(108, 92, 231, 0.15);
+        }
+
+        .feature-title {
+            font-family: var(--font-heading);
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-desc {
+            font-size: 0.85rem;
+            color: #718096;
+            line-height: 1.5;
+        }
+
+        /* --- Footer --- */
+        .app-footer {
+            width: 100%;
+            text-align: center;
+            padding: 2rem;
+            font-size: 0.8rem;
+            color: #4a5568;
+            border-top: 1px solid rgba(255, 255, 255, 0.03);
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. Header Navigation -->
+    <header class="header-nav">
+        <a href="/" class="logo-container">
+            <div class="logo-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" fill="currentColor"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.64 5.64l2.83 2.83M15.53 15.53l2.83 2.83M5.64 18.36l2.83-2.83M15.53 8.47l2.83-2.83"/><circle cx="12" cy="3" r="1" fill="currentColor"/><circle cx="12" cy="21" r="1" fill="currentColor"/><circle cx="3" cy="12" r="1" fill="currentColor"/><circle cx="21" cy="12" r="1" fill="currentColor"/></svg>
+            </div>
+            <span class="logo-text">SynapseCV</span>
+        </a>
+        <div class="auth-actions">
+            <a href="{{ url_for('auth.login') }}" class="btn-link">Sign In</a>
+            <a href="{{ url_for('auth.register') }}" class="btn-outline">Register</a>
+        </div>
+    </header>
+
+    <!-- 2. Hero Action Workspace Landing -->
+    <main class="hero-section">
+        <div class="badge-premium">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.886H3.882L8.94 12.45 7.027 18.336 12 14.727l4.973 3.61-1.913-5.887 5.058-3.564h-6.206L12 3z"/></svg>
+            Next-Gen AI Parser
+        </div>
+        <h1 class="hero-title">Intelligent AI-Powered<br><span>Resume Command Center</span></h1>
+        <p class="hero-subtitle">
+            SynapseCV makes candidate vetting effortless. Instantly scan single or bulk resumes, align applicants to your ideal job descriptions with smart AI scoring, save custom templates, and seamlessly integrate talent data.
+        </p>
+
+        <div class="cta-group">
+            <a href="{{ url_for('auth.register') }}" class="btn-premium">
+                Create Free Account
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </a>
+            <a href="{{ url_for('web.workspace') }}" class="btn-premium-secondary">
+                Launch Sandbox Mode
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6Z"/></svg>
+            </a>
+        </div>
+    </main>
+
+    <!-- 3. Features Bento Grid -->
+    <section class="features-grid">
+        <div class="feature-card primary-accent">
+            <div class="feature-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+            <h2 class="feature-title">Multi-Threaded Concurrency</h2>
+            <p class="feature-desc">Scan up to 10 resume PDFs concurrently using our ThreadPoolExecutor pipeline, serving a ranked score alignment leaderboard in seconds.</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+            </div>
+            <h2 class="feature-title">Keyword & Gap Scanner</h2>
+            <p class="feature-desc">Leverage Gemini 2.5 Flash intelligence to identify core matched skills, missing target position requirements, and mathematical deductions.</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="feature-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 18v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2"/><rect width="12" height="12" x="8" y="2" rx="2" ry="2"/></svg>
+            </div>
+            <h2 class="feature-title">Developer REST APIs</h2>
+            <p class="feature-desc">Generate, manage, and revoke Stripe-style HMAC credentials in our Developer Portal to seamlessly integrate SynapseCV with your ATS pipeline.</p>
+        </div>
+
+        <div class="feature-card primary-accent">
+            <div class="feature-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+            </div>
+            <h2 class="feature-title">Recruiters' Archives</h2>
+            <p class="feature-desc">Persist evaluated candidate results cleanly in the database to search, inspect, print, or bulk-export spreadsheet logs at any time.</p>
+        </div>
+    </section>
+
+    <!-- 4. Footer -->
+    <footer class="app-footer">
+        &copy; 2026 SynapseCV Enterprise. All rights reserved. Made for Recruiters & ATS Builders.
+    </footer>
+
+</body>
+</html>

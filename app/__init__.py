@@ -1,0 +1,130 @@
+import os
+import structlog
+from flask import Flask, jsonify
+from dotenv import load_dotenv
+
+from app.config import DevelopmentConfig, ProductionConfig, TestingConfig
+from app.extensions import limiter, talisman, cors, db, migrate, login_manager, oauth
+
+# Ensure environment variables are loaded early
+load_dotenv()
+
+def create_app(config_class=None):
+    """
+    Application Factory Pattern for initializing the Flask app.
+    Loads configurations based on the FLASK_ENV setting.
+    """
+    app = Flask(__name__, template_folder='../templates', static_folder='../static')
+    
+    # 1. Determine environment and load configuration
+    if config_class is None:
+        env = os.environ.get("FLASK_ENV", "development").lower()
+        if env == "production":
+            config_class = ProductionConfig
+        elif env == "testing":
+            config_class = TestingConfig
+        else:
+            config_class = DevelopmentConfig
+            
+    app.config.from_object(config_class)
+    
+    # 2. Configure Structured Logging
+    from app.utils.logging import setup_logger
+    setup_logger(app)
+    
+    # 3. Initialize Extensions
+    limiter.init_app(app)
+    cors.init_app(app)
+    
+    # Talisman only active/strict in production to avoid local HTTPS hassles
+    if not app.debug and not app.testing:
+        talisman.init_app(
+            app,
+            force_https=True,
+            content_security_policy=app.config.get("CSP_POLICY"),
+            session_cookie_secure=True
+        )
+    else:
+        # Dummy or lenient talisman initialization for dev
+        talisman.init_app(
+            app,
+            force_https=False,
+            content_security_policy=None
+        )
+        
+    db.init_app(app)
+    migrate.init_app(app, db)
+    
+    # Zero-configuration Database Initialization
+    with app.app_context():
+        try:
+            from app.models import User, Analysis, ApiKey, RoleTemplate  # noqa: F401
+            db.create_all()
+            
+            # Pre-seed a default Recruiter Admin user if it doesn't exist
+            admin_email = "recruiter@example.com"
+            admin = User.query.filter_by(email=admin_email).first()
+            if not admin:
+                structlog.get_logger(__name__).info("Pre-seeding default Recruiter Admin account...")
+                admin = User(email=admin_email, name="Recruiter Admin")
+                admin.set_password("SecurePassword123")
+                db.session.add(admin)
+                db.session.commit()
+        except Exception as e:
+            structlog.get_logger(__name__).error(f"Failed to auto-create database tables: {e}")
+    
+    # Configure Flask-Login loader
+    login_manager.init_app(app)
+    login_manager.login_view = "auth.login"
+    login_manager.login_message = "Please sign in to access SynapseCV archives."
+    
+    @login_manager.user_loader
+    def load_user(user_id):
+        from app.models import User
+        return User.query.get(int(user_id))
+        
+    oauth.init_app(app)
+    
+    # 4. Register Blueprints
+    from app.routes.web import web_bp
+    from app.routes.parse import parse_bp
+    from app.routes.auth import auth_bp
+    from app.routes.api import api_bp
+    
+    app.register_blueprint(web_bp)
+    app.register_blueprint(parse_bp)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(api_bp)
+    
+    # 5. Error Handlers
+    @app.errorhandler(429)
+    def ratelimit_handler(e):
+        return jsonify({
+            "error": "Rate limit exceeded. Please slow down.",
+            "retry_after": getattr(e, "description", "60 seconds")
+        }), 429
+
+    @app.errorhandler(413)
+    def request_entity_too_large(e):
+        return jsonify({
+            "error": "File size exceeds the maximum limit of 5MB."
+        }), 413
+        
+    # 6. Global Security Headers and Cleanup Hooks
+    @app.after_request
+    def apply_security_filters(response):
+        # Override Server header to obscure details
+        response.headers['Server'] = 'SynapseCV'
+        # Prevent search engine indexing of processed results (GDPR compliance)
+        response.headers['X-Robots-Tag'] = 'noindex, nofollow'
+        return response
+        
+    # 7. Start Supabase Keep-Alive Database Ping Daemon in Production
+    if app.config.get("ENV") == "production":
+        try:
+            from app.utils.keep_alive import start_keep_alive
+            start_keep_alive(app)
+        except Exception as e:
+            app.logger.error(f"Failed to start Database Keep-Alive Daemon: {e}")
+            
+    return app

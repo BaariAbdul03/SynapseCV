@@ -1,0 +1,51 @@
+name: SynapseCV CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+        cache: "pip"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Secret Scanning Audit
+      name: Check for accidental API keys or secrets exposure
+      run: |
+        # Scan files for typical Google Gemini or Stripe-like key prefixes
+        if grep -rniE "(AIzaSy[A-Za-z0-9_-]{33}|scv_[live|test]_[A-Za-z0-9]{20,})" app/ static/ templates/ tests/; then
+          echo "🚨 CRITICAL ERROR: Found potential plaintext API keys exposed in the codebase! Aborting build."
+          exit 1
+        else
+          echo "✅ Secrets check passed: No plaintext keys found."
+        fi
+
+    - name: Ruff Code Quality Linting
+      run: |
+        python -m ruff check .
+
+    - name: Run Pytest Test Suite
+      env:
+        FLASK_ENV: testing
+        SECRET_KEY: testing_secret_key_12345
+        GEMINI_API_KEY: testing_gemini_api_key_12345
+      run: |
+        python -m pytest
