@@ -114,7 +114,8 @@ def login_google():
 def google_authorize():
     """Handles standard Google OAuth callback authorized tokens."""
     try:
-        _token = oauth.google.authorize_access_token()
+        redirect_uri = url_for('auth.google_authorize', _external=True)
+        _token = oauth.google.authorize_access_token(redirect_uri=redirect_uri)
         resp = oauth.google.get('userinfo')
         user_info = resp.json()
         

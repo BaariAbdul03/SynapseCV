@@ -39,6 +39,12 @@ class ProductionConfig(Config):
     ENV = "production"
     RATELIMIT_ENABLED = True
     
+    # Configure NullPool to prevent connection pooling issues with Supabase transaction pooler
+    from sqlalchemy.pool import NullPool
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "poolclass": NullPool,
+    }
+    
     # Talisman CSP configurations
     CSP_POLICY = {
         'default-src': '\'self\'',
@@ -66,7 +72,8 @@ class ProductionConfig(Config):
         ],
         'connect-src': [
             '\'self\'',
-            'https://cdnjs.cloudflare.com'
+            'https://cdnjs.cloudflare.com',
+            'https://unpkg.com'
         ],
         'worker-src': [
             '\'self\'',
