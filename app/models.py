@@ -133,7 +133,7 @@ class ApiKey(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     name = db.Column(db.String(100), default="Production API Key")
-    key_prefix = db.Column(db.String(10), nullable=False)
+    key_prefix = db.Column(db.String(32), nullable=False)
     key_hash = db.Column(db.String(64), nullable=False, unique=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

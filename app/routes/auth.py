@@ -1,11 +1,38 @@
 from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app
 from flask_login import login_user, logout_user, login_required, current_user
-import uuid
 
 from app.extensions import db, oauth
 from app.models import User
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+
+def configure_oauth_clients(app):
+    """Register OAuth providers once after the Flask app has loaded config."""
+    client_id = app.config.get("GOOGLE_CLIENT_ID")
+    client_secret = app.config.get("GOOGLE_CLIENT_SECRET")
+
+    if not client_id or not client_secret:
+        return
+
+    if "google" in getattr(oauth, "_clients", {}):
+        return
+
+    oauth.register(
+        name='google',
+        client_id=client_id,
+        client_secret=client_secret,
+        server_metadata_url=app.config.get("GOOGLE_DISCOVERY_URL"),
+        client_kwargs={'scope': 'openid email profile'},
+    )
+
+
+def external_url(endpoint, **values):
+    """Build production-safe external URLs behind Render's reverse proxy."""
+    values["_external"] = True
+    if current_app.config.get("ENV") == "production":
+        values["_scheme"] = "https"
+    return url_for(endpoint, **values)
 
 # ==========================================================================
 # 1. Traditional Password Registration & Login Routes
@@ -90,23 +117,9 @@ def login_google():
         # SANDBOX DEV MODE: Render transition screen to prevent back-button loops
         current_app.logger.warning("No Google OAuth secrets detected. Running in simulated Developer Sandbox Mode.")
         return render_template('auth/sandbox_auth.html')
-        
-    # Standard dynamic registration
-    oauth.register(
-        name='google',
-        client_id=client_id,
-        client_secret=client_secret,
-        access_token_url='https://accounts.google.com/o/oauth2/token',
-        access_token_params=None,
-        authorize_url='https://accounts.google.com/o/oauth2/auth',
-        authorize_params=None,
-        api_base_url='https://www.googleapis.com/oauth2/v1/',
-        userinfo_endpoint='https://openidconnect.googleapis.com/v1/userinfo',
-        client_kwargs={'scope': 'openid email profile'},
-        server_metadata_url=current_app.config.get("GOOGLE_DISCOVERY_URL")
-    )
-    
-    redirect_uri = url_for('auth.google_authorize', _external=True)
+
+    configure_oauth_clients(current_app)
+    redirect_uri = external_url('auth.google_authorize')
     return oauth.google.authorize_redirect(redirect_uri)
 
 
@@ -114,16 +127,21 @@ def login_google():
 def google_authorize():
     """Handles standard Google OAuth callback authorized tokens."""
     try:
-        redirect_uri = url_for('auth.google_authorize', _external=True)
-        _token = oauth.google.authorize_access_token(redirect_uri=redirect_uri)
-        resp = oauth.google.get('userinfo')
-        user_info = resp.json()
+        configure_oauth_clients(current_app)
+        redirect_uri = external_url('auth.google_authorize')
+        token = oauth.google.authorize_access_token(redirect_uri=redirect_uri)
+        user_info = token.get("userinfo")
+
+        if not user_info:
+            resp = oauth.google.get('https://openidconnect.googleapis.com/v1/userinfo')
+            resp.raise_for_status()
+            user_info = resp.json()
         
         email = user_info.get("email")
         name = user_info.get("name", "Google User")
-        sub = user_info.get("sub", str(uuid.uuid4()))
+        sub = user_info.get("sub")
         
-        if not email:
+        if not email or not sub:
             flash("Failed to retrieve email info from Google profile.", "error")
             return redirect(url_for('auth.login'))
             

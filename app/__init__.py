@@ -80,7 +80,9 @@ def create_app(config_class=None):
             structlog.get_logger(__name__).info(f"Database URI loaded: {obscured_uri}")
 
             from app.models import User, Analysis, ApiKey, RoleTemplate  # noqa: F401
+            from app.utils.database import ensure_database_compatibility
             db.create_all()
+            ensure_database_compatibility()
             
             # Pre-seed a default Recruiter Admin user if it doesn't exist
             admin_email = "recruiter@example.com"
@@ -109,6 +111,8 @@ def create_app(config_class=None):
             return None
         
     oauth.init_app(app)
+    from app.routes.auth import configure_oauth_clients
+    configure_oauth_clients(app)
     
     # 4. Register Blueprints
     from app.routes.web import web_bp

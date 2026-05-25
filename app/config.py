@@ -3,6 +3,8 @@ import os
 class Config:
     """Base Configuration class."""
     SECRET_KEY = os.environ.get("SECRET_KEY", "default-synapse-cv-secret-key-change-in-prod")
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
     
     # Flask settings
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB limit
@@ -38,6 +40,8 @@ class ProductionConfig(Config):
     DEBUG = False
     ENV = "production"
     RATELIMIT_ENABLED = True
+    PREFERRED_URL_SCHEME = "https"
+    SESSION_COOKIE_SECURE = True
     
     # Configure NullPool to prevent connection pooling issues with Supabase transaction pooler
     from sqlalchemy.pool import NullPool
