@@ -1,8 +1,15 @@
 import re
 import logging
-import magic
 
 logger = logging.getLogger(__name__)
+
+# Make magic optional since OS-level libmagic is often missing in serverless/cloud environments
+try:
+    import magic
+    HAS_MAGIC = True
+except ImportError:
+    HAS_MAGIC = False
+    logger.warning("python-magic library could not find system libmagic. Falling back to native binary signature validation.")
 
 def sanitize_text(text: str) -> str:
     """
@@ -22,17 +29,27 @@ def validate_pdf_mime(file_stream) -> bool:
     """
     Validates a file stream's MIME type using magic number detection server-side.
     Avoids extension spoofing vulnerability.
+    Uses native %PDF header check and falls back to python-magic if available.
     """
     try:
-        # Read the first 2048 bytes for signature checking
-        header = file_stream.read(2048)
+        # 1. High-speed, dependency-free binary header check
+        header_4 = file_stream.read(4)
         file_stream.seek(0)  # Rewind the file stream immediately
         
-        # Check MIME type
-        mime = magic.from_buffer(header, mime=True)
-        logger.info(f"Magic detected MIME type: {mime}")
-        
-        return mime == 'application/pdf'
+        # Valid PDF files always start with %PDF
+        if header_4 == b'%PDF':
+            return True
+            
+        # 2. Fallback to magic check if the header is shifted or complex
+        if HAS_MAGIC:
+            header_2048 = file_stream.read(2048)
+            file_stream.seek(0)  # Rewind
+            mime = magic.from_buffer(header_2048, mime=True)
+            logger.info(f"Magic detected MIME type: {mime}")
+            return mime == 'application/pdf'
+            
+        logger.warning("Native signature mismatch and python-magic unavailable.")
+        return False
     except Exception as e:
         logger.error(f"Error during MIME validation: {e}", exc_info=True)
         return False
