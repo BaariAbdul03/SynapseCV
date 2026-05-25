@@ -193,7 +193,6 @@ def google_authorize():
             return redirect(url_for('auth.login'))
 
         configure_oauth_clients(current_app)
-        redirect_uri = external_url('auth.google_authorize')
         token = oauth.google.authorize_access_token()
         user_info = get_google_user_info(token)
         
