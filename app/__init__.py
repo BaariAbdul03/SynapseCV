@@ -16,6 +16,11 @@ def create_app(config_class=None):
     """
     app = Flask(__name__, template_folder='../templates', static_folder='../static')
     
+    # Apply ProxyFix middleware in production to trust reverse-proxy headers (like Render's SSL terminator)
+    if os.environ.get("FLASK_ENV", "development").lower() == "production":
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
+    
     # 1. Determine environment and load configuration
     if config_class is None:
         env = os.environ.get("FLASK_ENV", "development").lower()
@@ -58,6 +63,22 @@ def create_app(config_class=None):
     # Zero-configuration Database Initialization
     with app.app_context():
         try:
+            # Log the parsed URI (obscuring password) for easy production debugging
+            db_uri = app.config.get("SQLALCHEMY_DATABASE_URI", "")
+            obscured_uri = db_uri
+            if "@" in db_uri:
+                try:
+                    prefix, rest = db_uri.split("@", 1)
+                    scheme_creds = prefix.split("://", 1)
+                    if len(scheme_creds) == 2:
+                        scheme, creds = scheme_creds
+                        user_pass = creds.split(":", 1)
+                        user = user_pass[0]
+                        obscured_uri = f"{scheme}://{user}:****@{rest}"
+                except Exception:
+                    obscured_uri = "postgresql://user:****@host..."
+            structlog.get_logger(__name__).info(f"Database URI loaded: {obscured_uri}")
+
             from app.models import User, Analysis, ApiKey, RoleTemplate  # noqa: F401
             db.create_all()
             
@@ -71,7 +92,7 @@ def create_app(config_class=None):
                 db.session.add(admin)
                 db.session.commit()
         except Exception as e:
-            structlog.get_logger(__name__).error(f"Failed to auto-create database tables: {e}")
+            structlog.get_logger(__name__).error(f"Failed to auto-create database tables: {e}", exc_info=True)
     
     # Configure Flask-Login loader
     login_manager.init_app(app)
@@ -81,7 +102,11 @@ def create_app(config_class=None):
     @login_manager.user_loader
     def load_user(user_id):
         from app.models import User
-        return User.query.get(int(user_id))
+        try:
+            return User.query.get(int(user_id))
+        except Exception as e:
+            structlog.get_logger(__name__).error(f"Database query failed in user_loader callback: {e}")
+            return None
         
     oauth.init_app(app)
     

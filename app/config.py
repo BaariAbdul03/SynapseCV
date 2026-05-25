@@ -44,8 +44,10 @@ class ProductionConfig(Config):
         'default-src': '\'self\'',
         'script-src': [
             '\'self\'',
+            '\'unsafe-inline\'',
             'https://cdnjs.cloudflare.com',
-            'https://fonts.googleapis.com'
+            'https://fonts.googleapis.com',
+            'https://unpkg.com'
         ],
         'style-src': [
             '\'self\'',
@@ -62,7 +64,14 @@ class ProductionConfig(Config):
             'data:',
             'https://images.unsplash.com'
         ],
-        'connect-src': '\'self\''
+        'connect-src': [
+            '\'self\'',
+            'https://cdnjs.cloudflare.com'
+        ],
+        'worker-src': [
+            '\'self\'',
+            'blob:'
+        ]
     }
 
 class TestingConfig(Config):
