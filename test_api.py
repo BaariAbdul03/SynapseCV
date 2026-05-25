@@ -22,14 +22,14 @@ class TestSynapseCVAPI(unittest.TestCase):
             db.session.add(self.test_user)
             db.session.commit()
             
-            # Generate a Stripe-style test API key
-            self.plaintext_key = "scv_live_testtoken1234567890"
+            # Generate a non-production-looking test API key
+            self.plaintext_key = "test_api_token_1234567890"
             key_hash = hashlib.sha256(self.plaintext_key.encode()).hexdigest()
             
             self.api_key = ApiKey(
                 user_id=self.test_user.id,
                 name="Test Dev Key",
-                key_prefix="scv_live_test",
+                key_prefix="test_api",
                 key_hash=key_hash
             )
             db.session.add(self.api_key)
@@ -52,7 +52,7 @@ class TestSynapseCVAPI(unittest.TestCase):
     def test_invalid_key_access(self):
         """Test API endpoints return 401 with incorrect keys."""
         headers = {
-            'Authorization': 'Bearer scv_live_wrongtoken'
+            'Authorization': 'Bearer test_wrongtoken'
         }
         response = self.client.post('/api/v1/parse', headers=headers)
         self.assertEqual(response.status_code, 401)

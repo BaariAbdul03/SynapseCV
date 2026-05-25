@@ -10,7 +10,7 @@ def test_api_unauthorized(client):
 
 def test_api_invalid_key(client):
     """Verify endpoint rejects invalid credentials."""
-    headers = {"Authorization": "Bearer scv_live_invalidtoken"}
+    headers = {"Authorization": "Bearer test_invalidtoken"}
     response = client.post('/api/v1/parse', headers=headers)
     assert response.status_code == 401
     assert "invalid or revoked" in response.get_json()["error"]
@@ -18,7 +18,7 @@ def test_api_invalid_key(client):
 def test_api_authorized_spoofed_pdf(client, db_session):
     """Verify authorized key with invalid file payload returns validation failure."""
     # 1. Setup mock key in database
-    plaintext = "scv_live_authorizedtoken12345"
+    plaintext = "test_authorizedtoken12345"
     key_hash = hashlib.sha256(plaintext.encode()).hexdigest()
     
     user = User(email="api.recruiter@example.com")
@@ -29,7 +29,7 @@ def test_api_authorized_spoofed_pdf(client, db_session):
     api_key = ApiKey(
         user_id=user.id,
         name="REST Client Key",
-        key_prefix="scv_live_auth",
+        key_prefix="test_auth",
         key_hash=key_hash
     )
     db_session.add(api_key)
