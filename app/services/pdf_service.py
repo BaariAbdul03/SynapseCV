@@ -4,6 +4,10 @@ from app.utils.validators import sanitize_text
 
 logger = logging.getLogger(__name__)
 
+MAX_PDF_PAGES = 10
+MAX_EXTRACTED_TEXT_CHARS = 30000
+
+
 def extract_text_from_pdf(file_stream) -> str:
     """
     Safely extracts text from a PDF file stream, then sanitizes it.
@@ -14,13 +18,17 @@ def extract_text_from_pdf(file_stream) -> str:
     """
     try:
         raw_text = []
+        extracted_chars = 0
         link_urls = set()  # Collect unique hyperlink URLs from annotations
         
         with pdfplumber.open(file_stream) as pdf:
-            for page in pdf.pages:
+            for page in pdf.pages[:MAX_PDF_PAGES]:
                 page_text = page.extract_text()
                 if page_text:
                     raw_text.append(page_text)
+                    extracted_chars += len(page_text)
+                    if extracted_chars >= MAX_EXTRACTED_TEXT_CHARS:
+                        break
                 
                 # Extract hyperlink annotations (URI actions)
                 if page.annots:
@@ -37,8 +45,7 @@ def extract_text_from_pdf(file_stream) -> str:
             if urls_to_append:
                 full_text += "\n\nEXTRACTED HYPERLINKS:\n" + "\n".join(urls_to_append)
         
-        return sanitize_text(full_text)
+        return sanitize_text(full_text[:MAX_EXTRACTED_TEXT_CHARS])
     except Exception as e:
         logger.error(f"Error during PDF extraction: {e}", exc_info=True)
         return ""
-

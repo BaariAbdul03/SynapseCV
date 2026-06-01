@@ -1,11 +1,14 @@
 import json
 import logging
 import time
-from flask import current_app
+from flask import current_app, has_app_context
 import google.generativeai as genai
 from google.api_core.exceptions import GoogleAPIError
 
 logger = logging.getLogger(__name__)
+
+MAX_RESUME_TEXT_CHARS = 30000
+
 
 class GeminiService:
     """Service to interact with Google Gemini models with resilience and structured analysis."""
@@ -40,6 +43,16 @@ class GeminiService:
                 raise ValueError("Gemini Service is not configured. Missing API Key.")
         return genai.GenerativeModel(model_name)
 
+    def _get_request_timeout(self) -> float:
+        if has_app_context():
+            return float(current_app.config.get("GEMINI_TIMEOUT", 25.0))
+        return 25.0
+
+    def _get_retry_count(self) -> int:
+        if has_app_context():
+            return int(current_app.config.get("GEMINI_RETRIES", 1))
+        return 3
+
     def analyze_resume(self, resume_text: str, jd_text: str = "") -> dict:
         """
         Analyzes a resume against an optional job description using a strict penalty system.
@@ -64,6 +77,10 @@ class GeminiService:
             if jd_text.strip()
             else "CONTEXT: No Job Description provided. INFER the target role from the resume content first."
         )
+
+        truncated_resume_text = resume_text[:MAX_RESUME_TEXT_CHARS]
+        if len(resume_text) > MAX_RESUME_TEXT_CHARS:
+            truncated_resume_text += "\n\n[Resume text truncated for processing safety.]"
 
         prompt = f"""
         You are a ruthless, industry-standard AI Resume Parser. 
@@ -108,14 +125,14 @@ class GeminiService:
 
         ---
         RESUME TEXT:
-        {resume_text}
+        {truncated_resume_text}
         """
 
         return self._execute_with_retry(prompt)
 
     def _execute_with_retry(self, prompt: str, model_name: str = None) -> dict:
         """Helper to run request with exponential backoff and fallback model."""
-        retries = 3
+        retries = self._get_retry_count()
         delay = 1.0
         current_model = model_name or self.PRIMARY_MODEL
         
@@ -129,7 +146,8 @@ class GeminiService:
                 # we let the SDK call resolve or time out on standard system connection.
                 response = model_inst.generate_content(
                     prompt, 
-                    generation_config={"temperature": 0.0}
+                    generation_config={"temperature": 0.0},
+                    request_options={"timeout": self._get_request_timeout()}
                 )
                 
                 if not response or not response.text:

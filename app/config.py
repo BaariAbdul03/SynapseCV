@@ -11,7 +11,8 @@ class Config:
     
     # Gemini API settings
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-    GEMINI_TIMEOUT = 30.0  # seconds
+    GEMINI_TIMEOUT = float(os.environ.get("GEMINI_TIMEOUT", "20.0"))  # seconds
+    GEMINI_RETRIES = int(os.environ.get("GEMINI_RETRIES", "1"))
     
     # Database (Supabase / SQLite)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
