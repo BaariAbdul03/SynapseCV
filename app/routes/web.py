@@ -99,13 +99,18 @@ def manage_roles():
     return jsonify(global_list + custom_list)
 
 
+@web_bp.route('/roles/template')
 @web_bp.route('/roles/<string:role_name>')
-def get_role_template(role_name):
+def get_role_template(role_name=None):
     """
     Returns the job description template for a specific role.
     Checks user's custom templates first (stripping the star badge prefix if present),
     then falls back to system global templates.
+    Supports role name passed as path parameter or query parameter 'role_name'.
     """
+    if not role_name:
+        role_name = request.args.get("role_name", "").strip()
+        
     clean_name = role_name.lstrip("★ ").strip()
     
     # Check user's custom templates if authenticated

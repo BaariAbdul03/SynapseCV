@@ -346,7 +346,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         
         try {
-            const response = await fetch(`/roles/${encodeURIComponent(selectedRole)}`);
+            const response = await fetch(`/roles/template?role_name=${encodeURIComponent(selectedRole)}`);
             if (!response.ok) throw new Error("Template not found");
             const data = await response.json();
             
