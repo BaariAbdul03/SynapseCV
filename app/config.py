@@ -31,7 +31,9 @@ class Config:
     GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
     GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
     GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
-
+    
+    # Groq AI configuration (primary AI provider)
+    GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 class DevelopmentConfig(Config):
     """Development environment configuration."""
     DEBUG = True

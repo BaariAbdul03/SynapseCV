@@ -5,25 +5,22 @@ from flask import Blueprint, current_app, request, jsonify
 from flask_login import current_user
 from app.extensions import limiter, db
 from app.services.pdf_service import extract_text_from_pdf
-from app.services.gemini_service import GeminiService
+from app.services.ai_service import AIService
 from app.utils.validators import validate_pdf_mime
 from app.models import Analysis
 
 logger = logging.getLogger(__name__)
 parse_bp = Blueprint('parse', __name__)
 
-# Initialize the Gemini service
-gemini_service = GeminiService()
+# Initialize the unified 3-tier AI service (Groq → Gemini 2.5 → Gemini 2.0)
+ai_service = AIService()
 
 
-def ensure_gemini_configured():
-    """Configure Gemini in the request thread before any worker threads run."""
-    api_key = current_app.config.get("GEMINI_API_KEY")
-    if not api_key:
-        return False
-    if not gemini_service._is_configured:
-        gemini_service.configure(api_key)
-    return gemini_service._is_configured
+def ensure_ai_configured():
+    """Verify that at least one AI provider key is set before processing."""
+    groq_key = current_app.config.get("GROQ_API_KEY")
+    gemini_key = current_app.config.get("GEMINI_API_KEY")
+    return bool(groq_key or gemini_key)
 
 
 def parse_single_resume_object(filename, stream, jd_text):
@@ -42,8 +39,8 @@ def parse_single_resume_object(filename, stream, jd_text):
         if not resume_text:
             return {"filename": filename, "error": "Failed to read or extract printable text from PDF."}
             
-        # Call Gemini AI API
-        extracted_data = gemini_service.analyze_resume(resume_text, jd_text)
+        # Call unified AI service (Groq → Gemini fallback chain)
+        extracted_data = ai_service.analyze_resume(resume_text, jd_text)
         if not extracted_data:
             return {"filename": filename, "error": "AI model failed to analyze resume contents."}
             
@@ -62,9 +59,9 @@ def parse_resume():
     Supports up to 10 files concurrently using ThreadPoolExecutor.
     """
     try:
-        if not ensure_gemini_configured():
+        if not ensure_ai_configured():
             return jsonify({
-                "error": "AI parser is not configured. Please set GEMINI_API_KEY in Render."
+                "error": "AI parser is not configured. Please set GROQ_API_KEY or GEMINI_API_KEY in your environment."
             }), 503
 
         # P1.1: File presence validation
