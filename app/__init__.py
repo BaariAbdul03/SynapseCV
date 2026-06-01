@@ -1,7 +1,8 @@
 import os
 import structlog
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from dotenv import load_dotenv
+from werkzeug.exceptions import HTTPException
 
 from app.config import DevelopmentConfig, ProductionConfig, TestingConfig
 from app.extensions import limiter, talisman, cors, db, migrate, login_manager, oauth
@@ -139,6 +140,27 @@ def create_app(config_class=None):
         return jsonify({
             "error": "File size exceeds the maximum limit of 5MB."
         }), 413
+
+    @app.errorhandler(Exception)
+    def unhandled_error(e):
+        if isinstance(e, HTTPException):
+            status_code = e.code or 500
+            message = e.description
+        else:
+            status_code = 500
+            message = "Internal Server Error"
+            structlog.get_logger(__name__).error("Unhandled application error", exc_info=True)
+
+        expects_json = (
+            request.path.startswith("/api/")
+            or request.path == "/parse"
+            or request.accept_mimetypes.best == "application/json"
+        )
+        if expects_json:
+            return jsonify({"error": message}), status_code
+        if isinstance(e, HTTPException):
+            return e
+        return jsonify({"error": message}), status_code
         
     # 6. Global Security Headers and Cleanup Hooks
     @app.after_request

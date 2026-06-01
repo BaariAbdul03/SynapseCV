@@ -505,7 +505,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: formData
             });
 
-            const data = await response.json();
+            const rawBody = await response.text();
+            let data = {};
+            try {
+                data = rawBody ? JSON.parse(rawBody) : {};
+            } catch (parseErr) {
+                console.error("Non-JSON parser response:", rawBody, parseErr);
+                data = {
+                    error: `Server returned ${response.status}. Check Render logs for the /parse request.`
+                };
+            }
             
             if (!response.ok) {
                 throw new Error(data.error || "Failed to analyze resume profile.");

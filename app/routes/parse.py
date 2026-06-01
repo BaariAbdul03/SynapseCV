@@ -1,7 +1,7 @@
 import logging
 import io
 from concurrent.futures import ThreadPoolExecutor
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, current_app, request, jsonify
 from flask_login import current_user
 from app.extensions import limiter, db
 from app.services.pdf_service import extract_text_from_pdf
@@ -14,6 +14,16 @@ parse_bp = Blueprint('parse', __name__)
 
 # Initialize the Gemini service
 gemini_service = GeminiService()
+
+
+def ensure_gemini_configured():
+    """Configure Gemini in the request thread before any worker threads run."""
+    api_key = current_app.config.get("GEMINI_API_KEY")
+    if not api_key:
+        return False
+    if not gemini_service._is_configured:
+        gemini_service.configure(api_key)
+    return gemini_service._is_configured
 
 
 def parse_single_resume_object(filename, stream, jd_text):
@@ -52,6 +62,11 @@ def parse_resume():
     Supports up to 10 files concurrently using ThreadPoolExecutor.
     """
     try:
+        if not ensure_gemini_configured():
+            return jsonify({
+                "error": "AI parser is not configured. Please set GEMINI_API_KEY in Render."
+            }), 503
+
         # P1.1: File presence validation
         if 'resume' not in request.files:
             return jsonify({"error": "No resume file provided"}), 400
