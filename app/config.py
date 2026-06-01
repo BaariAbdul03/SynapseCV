@@ -12,7 +12,10 @@ class Config:
     # Gemini API settings
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
     GEMINI_TIMEOUT = float(os.environ.get("GEMINI_TIMEOUT", "20.0"))  # seconds
-    GEMINI_RETRIES = int(os.environ.get("GEMINI_RETRIES", "1"))
+    GEMINI_RETRIES = int(os.environ.get("GEMINI_RETRIES", "0"))
+    GEMINI_ENABLE_FALLBACK = os.environ.get("GEMINI_ENABLE_FALLBACK", "false").lower() == "true"
+    GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-lite")
+    GEMINI_FALLBACK_MODEL = os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-2.0-flash")
     
     # Database (Supabase / SQLite)
     SQLALCHEMY_TRACK_MODIFICATIONS = False

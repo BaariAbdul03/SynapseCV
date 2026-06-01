@@ -13,8 +13,8 @@ MAX_RESUME_TEXT_CHARS = 30000
 class GeminiService:
     """Service to interact with Google Gemini models with resilience and structured analysis."""
     
-    PRIMARY_MODEL = "gemini-2.5-flash"
-    FALLBACK_MODEL = "gemini-2.0-flash-lite"
+    PRIMARY_MODEL = "gemini-2.0-flash-lite"
+    FALLBACK_MODEL = "gemini-2.0-flash"
     
     def __init__(self, api_key: str = None):
         self.api_key = api_key
@@ -52,6 +52,21 @@ class GeminiService:
         if has_app_context():
             return int(current_app.config.get("GEMINI_RETRIES", 1))
         return 3
+
+    def _get_primary_model_name(self) -> str:
+        if has_app_context():
+            return current_app.config.get("GEMINI_MODEL", self.PRIMARY_MODEL)
+        return self.PRIMARY_MODEL
+
+    def _get_fallback_model_name(self) -> str:
+        if has_app_context():
+            return current_app.config.get("GEMINI_FALLBACK_MODEL", self.FALLBACK_MODEL)
+        return self.FALLBACK_MODEL
+
+    def _is_fallback_enabled(self) -> bool:
+        if has_app_context():
+            return bool(current_app.config.get("GEMINI_ENABLE_FALLBACK", False))
+        return True
 
     def analyze_resume(self, resume_text: str, jd_text: str = "") -> dict:
         """
@@ -134,7 +149,9 @@ class GeminiService:
         """Helper to run request with exponential backoff and fallback model."""
         retries = self._get_retry_count()
         delay = 1.0
-        current_model = model_name or self.PRIMARY_MODEL
+        primary_model = self._get_primary_model_name()
+        fallback_model = self._get_fallback_model_name()
+        current_model = model_name or primary_model
         
         for attempt in range(retries + 1):
             try:
@@ -169,10 +186,10 @@ class GeminiService:
                 
                 # If we've reached the last retry, raise the exception or try the fallback
                 if attempt == retries:
-                    if current_model == self.PRIMARY_MODEL:
+                    if current_model == primary_model and self._is_fallback_enabled():
                         logger.error("Primary model failed. Attempting fallback model...")
                         # Reset retry loop for fallback model by passing it forward
-                        return self._execute_with_retry(prompt, model_name=self.FALLBACK_MODEL)
+                        return self._execute_with_retry(prompt, model_name=fallback_model)
                     raise e
                 
                 # Exponential backoff
