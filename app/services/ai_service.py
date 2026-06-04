@@ -27,74 +27,96 @@ MAX_RESUME_TEXT_CHARS = 30_000
 # ---------------------------------------------------------------------------
 
 def _build_prompt(resume_text: str, jd_text: str) -> str:
-    scoring_logic = """
-    SCORING ALGORITHM (STRICT PENALTY SYSTEM):
-    1. Start with a Base Score of 100.
-    2. Detect the Target Role (inferred from resume or provided JD).
-    3. Apply Deductions:
-       - CRITICAL SKILL GAP (-25 pts): Missing a FOUNDATIONAL skill for the role.
-           e.g. Full Stack Dev missing SQL; Data Scientist missing Python.
-       - EXPERIENCE GAP (-10 pts): Bullet points vague, generic, or lack quantifiable metrics.
-       - FORMATTING (-5 pts): Layout messy or missing basic contact info.
-    4. Final Score = 100 - Total Deductions. (Minimum 0.)
-    """
-
-    context = (
-        f"CONTEXT: Analyse the resume against this JOB DESCRIPTION: '{jd_text}'"
-        if jd_text.strip()
-        else "CONTEXT: No Job Description provided. INFER the target role from the resume content first."
-    )
-
     truncated = resume_text[:MAX_RESUME_TEXT_CHARS]
     if len(resume_text) > MAX_RESUME_TEXT_CHARS:
         truncated += "\n\n[Resume text truncated for processing safety.]"
 
-    return f"""
-You are a ruthless, industry-standard AI Resume Parser.
-You have TWO mandatory tasks.
+    if jd_text.strip():
+        # ── JD-AWARE MODE: Score the candidate against the specified role ────
+        context_block = f"""RECRUITER'S TARGET ROLE & JOB DESCRIPTION:
+\"\"\"
+{jd_text.strip()}
+\"\"\"
 
-{context}
+YOUR MISSION: Evaluate how well this candidate fits the TARGET ROLE described above.
+- "detected_role" MUST be the TARGET ROLE extracted from the job description above — NOT the candidate's current job title.
+- Score the candidate's skills and experience SPECIFICALLY against the requirements in the JD.
+- Identify which required skills from the JD are MISSING from the resume as "missing_keywords"."""
+
+        scoring_logic = """
+SCORING ALGORITHM (JD-MATCHED PENALTY SYSTEM):
+1. Start with a Base Score of 100.
+2. The target role is DEFINED by the Job Description above — use it directly.
+3. Apply Deductions based on gaps between the CANDIDATE'S RESUME and the JD REQUIREMENTS:
+   - CRITICAL SKILL GAP (-25 pts each): The JD explicitly requires a skill that is completely absent from the resume.
+     * Example: JD requires Python/R for Data Scientist role, candidate has none.
+     * Example: JD requires React/TypeScript for Frontend Engineer, candidate has none.
+   - EXPERIENCE GAP (-10 pts): Bullet points are vague, generic, or lack quantifiable metrics (numbers/%).
+   - FORMATTING (-5 pts): Layout is messy or missing basic contact info.
+4. Final Score = 100 - Total Deductions. (Minimum 0.)"""
+    else:
+        # ── INFERENCE MODE: No JD, detect role from resume content ──────────
+        context_block = """NO JOB DESCRIPTION PROVIDED.
+YOUR MISSION: Infer the candidate's target role from their resume content, skills, and experience.
+- "detected_role" MUST be the role you infer from the resume content.
+- Score the candidate against typical industry standards for their detected role.
+- Identify commonly expected skills for that role that are missing as "missing_keywords"."""
+
+        scoring_logic = """
+SCORING ALGORITHM (INFERRED ROLE PENALTY SYSTEM):
+1. Start with a Base Score of 100.
+2. Infer the Target Role from the resume (job titles, skills, experience context).
+3. Apply Deductions based on gaps for the INFERRED ROLE:
+   - CRITICAL SKILL GAP (-25 pts): Missing a FOUNDATIONAL skill for their inferred role.
+     * Example: 'Full Stack Dev' missing Databases (SQL/NoSQL).
+     * Example: 'Data Scientist' missing Python/R.
+   - EXPERIENCE GAP (-10 pts): Bullet points are vague, generic, or lack quantifiable metrics.
+   - FORMATTING (-5 pts): Layout is messy or missing basic contact info.
+4. Final Score = 100 - Total Deductions. (Minimum 0.)"""
+
+    return f"""You are a senior technical recruiter and ruthless AI Resume Parser performing a precise candidate evaluation.
+
+{context_block}
 
 ---
-TASK 1: EXTRACTION
-Extract these exact details. Return "Not Found" if missing.
-- "name": Full Name
-- "email": Email Address
-- "phone": Phone Number
-- "github_url": GitHub profile URL (e.g. https://github.com/username). Return "Not Found" if not present.
-- "linkedin_url": LinkedIn profile URL (e.g. https://linkedin.com/in/username). Return "Not Found" if not present.
-- "education": List of cleanly formatted strings. Format: "Degree — Field (Score%), Institution, Year"
-- "skills": List of strings (all technical skills found)
+TASK 1: DATA EXTRACTION
+Extract the following fields from the resume. Return "Not Found" if a field is absent.
+- "name": Candidate's full name
+- "email": Email address
+- "phone": Phone number
+- "github_url": GitHub profile URL (full URL like https://github.com/username). Return "Not Found" if absent.
+- "linkedin_url": LinkedIn profile URL (full URL like https://linkedin.com/in/username). Return "Not Found" if absent.
+- "education": List of strings, each formatted as: "Degree — Field of Study (Score%), Institution, Year"
+- "skills": Complete list of all technical skills mentioned anywhere in the resume
 
 ---
-TASK 2: EVALUATION
+TASK 2: JD-MATCHED EVALUATION
 {scoring_logic}
 
-CRITICAL CONSISTENCY RULE: The "match_percentage" number in your JSON output MUST EXACTLY EQUAL
-the final score computed in your "scoring_reasoning" text. Any mismatch is unacceptable.
+MANDATORY CONSISTENCY RULE: The numeric value in "match_percentage" MUST EXACTLY EQUAL the final score
+stated at the end of "scoring_reasoning". Example: if reasoning ends with "Final: 65", then match_percentage must be 65.
+Any mismatch between these two fields is a critical error.
 
 ---
-OUTPUT FORMAT (MANDATORY):
-Return ONLY a valid JSON object. Do NOT wrap it in markdown code blocks.
+OUTPUT FORMAT (MANDATORY — return ONLY this JSON, no markdown, no extra text):
 {{
     "name": "...",
     "email": "...",
     "phone": "...",
     "github_url": "...",
     "linkedin_url": "...",
-    "education": ["..."],
-    "skills": ["..."],
-    "match_percentage": 0,
-    "detected_role": "...",
-    "missing_keywords": ["..."],
-    "profile_summary": "...",
-    "scoring_reasoning": "Started at 100. Deducted 25 for missing SQL. Deducted 10 for vague metrics. Final: 65."
+    "education": ["Degree — Field (Score%), Institution, Year"],
+    "skills": ["skill1", "skill2"],
+    "match_percentage": 75,
+    "detected_role": "EXACT TARGET ROLE from JD (or inferred role if no JD)",
+    "missing_keywords": ["required skill from JD that is absent in resume"],
+    "profile_summary": "2-3 sentence evaluation of candidate fit for the target role",
+    "scoring_reasoning": "Started at 100. Deducted X for [specific gap]. Deducted Y for [specific gap]. Final: Z."
 }}
 
 ---
-RESUME TEXT:
-{truncated}
-""".strip()
+RESUME TEXT TO ANALYSE:
+{truncated}""".strip()
 
 
 def _clean_json_response(text: str) -> dict:
@@ -147,9 +169,12 @@ class GroqService:
                 {
                     "role": "system",
                     "content": (
-                        "You are an expert AI resume parser. "
+                        "You are an expert AI resume parser and senior technical recruiter. "
+                        "You evaluate candidate resumes against specific job descriptions. "
+                        "CRITICAL RULE: When a Job Description is provided, the 'detected_role' field in your JSON "
+                        "output MUST contain the TARGET ROLE from the job description — never the candidate's current job title. "
                         "Always respond with a single valid JSON object matching the schema given by the user. "
-                        "Never add commentary, markdown, or extra text outside the JSON."
+                        "Never add commentary, markdown fences, or extra text outside the JSON object."
                     ),
                 },
                 {"role": "user", "content": prompt},
@@ -159,6 +184,7 @@ class GroqService:
         )
         raw = response.choices[0].message.content
         return _clean_json_response(raw)
+
 
     def analyze(self, resume_text: str, jd_text: str) -> dict:
         prompt = _build_prompt(resume_text, jd_text)

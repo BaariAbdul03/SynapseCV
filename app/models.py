@@ -46,7 +46,8 @@ class Analysis(db.Model):
     
     # Candidate details
     candidate_name = db.Column(db.String(150), nullable=True)
-    detected_role = db.Column(db.String(100), nullable=True)
+    target_role = db.Column(db.String(150), nullable=True)   # The recruiter's chosen target position
+    detected_role = db.Column(db.String(100), nullable=True)  # What the AI identified from the analysis
     match_percentage = db.Column(db.Integer, default=0)
     email = db.Column(db.String(120), nullable=True)
     phone = db.Column(db.String(50), nullable=True)
@@ -108,6 +109,7 @@ class Analysis(db.Model):
         return {
             "id": self.id,
             "name": self.candidate_name,
+            "target_role": self.target_role,
             "detected_role": self.detected_role,
             "match_percentage": self.match_percentage,
             "email": self.email,

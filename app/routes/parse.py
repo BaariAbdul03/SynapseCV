@@ -70,6 +70,7 @@ def parse_resume():
         
         files = request.files.getlist("resume")
         jd_text = request.form.get('job_description', '').strip()
+        selected_role = request.form.get('selected_role', '').strip()  # The role chosen from dropdown
 
         # P1.1: Enforce JD max character limit
         if len(jd_text) > 5000:
@@ -106,6 +107,7 @@ def parse_resume():
                     analysis = Analysis(
                         user_id=current_user.id,
                         candidate_name=result.get("name"),
+                        target_role=selected_role or result.get("detected_role"),
                         detected_role=result.get("detected_role"),
                         match_percentage=result.get("match_percentage"),
                         email=result.get("email"),
@@ -147,6 +149,7 @@ def parse_resume():
                             analysis = Analysis(
                                 user_id=current_user.id,
                                 candidate_name=res.get("name"),
+                                target_role=selected_role or res.get("detected_role"),
                                 detected_role=res.get("detected_role"),
                                 match_percentage=res.get("match_percentage"),
                                 email=res.get("email"),

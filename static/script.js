@@ -270,7 +270,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             ${item.name || "Unknown Candidate"}
                         </div>
                         <div style="font-size: 0.75rem; color: #718096; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.15rem;">
-                            ${item.detected_role || "Inferred Role"}
+                            ${item.target_role || item.detected_role || "Inferred Role"}
                         </div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 0.75rem;">
@@ -498,6 +498,9 @@ document.addEventListener("DOMContentLoaded", () => {
             formData.append("resume", file);
         });
         formData.append("job_description", jdTextarea.value.trim());
+        // Send the selected template role name so backend can store target_role correctly
+        const selectedRoleName = roleSelect ? roleSelect.value.replace(/^★\s*/, '').trim() : '';
+        formData.append("selected_role", selectedRoleName);
 
         try {
             const response = await fetch("/parse", {
@@ -1218,8 +1221,10 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Call developers keys loader
-    loadApiKeys();
+    // Call developers keys loader — only when the dev portal elements exist (authenticated users)
+    if (apiKeysListContainer) {
+        loadApiKeys();
+    }
 
     // ==========================================================================
     // 9. Batch Export Features (CSV & JSON Leaderboard Exports)
