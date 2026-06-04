@@ -603,7 +603,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // 4.1 Demographic block
         candidateNameEl.textContent = data.name || "Not Found";
-        detectedRoleEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24M14.83 9.17l4.24-4.24M14.83 14.83l4.24 4.24M9.17 14.83l-4.24 4.24"/></svg> ${data.detected_role || "Inferred Role"}`;
+        detectedRoleEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24M14.83 9.17l4.24-4.24M14.83 14.83l4.24 4.24M9.17 14.83l-4.24 4.24"/></svg> ${data.target_role || data.detected_role || "Inferred Role"}`;
         
         emailEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg> ${data.email || "Not Found"}`;
         phoneEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> ${data.phone || "Not Found"}`;
@@ -853,7 +853,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             doc.setFontSize(12);
             doc.setTextColor(0, 210, 211); // Neon Cyan
-            doc.text(parsedResultData.detected_role || "Inferred Role", 80, 80);
+            doc.text(parsedResultData.target_role || parsedResultData.detected_role || "Inferred Role", 80, 80);
 
             doc.setFontSize(10);
             doc.setTextColor(226, 232, 240);
@@ -1026,7 +1026,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 tr.innerHTML = `
                     <td style="padding: 1rem 0.75rem; text-align: center; font-weight: 700; color: #718096;">#${index + 1}</td>
                     <td style="padding: 1rem 0.75rem; font-weight: 600; color: white;">${item.name || "Unknown"}</td>
-                    <td style="padding: 1rem 0.75rem; color: #cbd5e0;">${item.detected_role || "Not Inferred"}</td>
+                    <td style="padding: 1rem 0.75rem; color: #cbd5e0;">${item.target_role || item.detected_role || "Not Inferred"}</td>
                     <td style="padding: 1rem 0.75rem; text-align: center;">
                         <span style="font-size: 0.8rem; font-weight: 700; color: ${scoreColor}; background: ${scoreColor}15; padding: 0.2rem 0.5rem; border-radius: 6px; display: inline-block;">
                             ${score}%
@@ -1268,7 +1268,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const row = [
                         `"${index + 1}"`,
                         `"${(item.name || "Unknown").replace(/'/g, "''").replace(/"/g, '""')}"`,
-                        `"${(item.detected_role || "").replace(/'/g, "''").replace(/"/g, '""')}"`,
+                        `"${(item.target_role || item.detected_role || "").replace(/'/g, "''").replace(/"/g, '""')}"`,
                         `"${item.match_percentage || 0}%"`,
                         `"${item.email || ""}"`,
                         `"${item.phone || ""}"`,

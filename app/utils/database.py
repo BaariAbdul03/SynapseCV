@@ -39,6 +39,8 @@ def ensure_database_compatibility() -> None:
 
     analysis_columns = table_columns("analyses")
     if analysis_columns:
+        if "target_role" not in analysis_columns:
+            ddl_statements.append("ALTER TABLE analyses ADD COLUMN target_role VARCHAR(150)")
         if "github_url" not in analysis_columns:
             ddl_statements.append("ALTER TABLE analyses ADD COLUMN github_url VARCHAR(255)")
         if "linkedin_url" not in analysis_columns:

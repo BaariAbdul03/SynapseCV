@@ -165,9 +165,11 @@ def api_parse_resume():
             
         # Save to database under the API key user's account
         try:
+            selected_role = request.form.get('target_role', '').strip() or request.form.get('selected_role', '').strip()
             analysis = Analysis(
                 user_id=g.api_user.id,
                 candidate_name=result.get("name"),
+                target_role=selected_role or result.get("detected_role"),
                 detected_role=result.get("detected_role"),
                 match_percentage=result.get("match_percentage"),
                 email=result.get("email"),
@@ -282,7 +284,8 @@ def openapi_json():
                                     "type": "object",
                                     "properties": {
                                         "resume": {"type": "string", "format": "binary", "description": "Candidate's resume PDF"},
-                                        "job_description": {"type": "string", "description": "Target job description constraints"}
+                                        "job_description": {"type": "string", "description": "Target job description constraints"},
+                                        "target_role": {"type": "string", "description": "Optional specific target role name (e.g. Frontend Engineer)"}
                                     },
                                     "required": ["resume"]
                                 }
