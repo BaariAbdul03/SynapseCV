@@ -3,7 +3,7 @@ import secrets
 import hashlib
 from functools import wraps
 from flask import Blueprint, request, jsonify, g
-from app.extensions import db, limiter
+from app.extensions import db, limiter, csrf
 from app.models import ApiKey, Analysis
 from app.routes.parse import parse_single_resume_object
 
@@ -139,6 +139,7 @@ def revoke_key(key_id):
 @api_bp.route('/v1/parse', methods=['POST'])
 @limiter.limit("10 per minute")
 @api_key_required
+@csrf.exempt
 def api_parse_resume():
     """
     Public API endpoint to parse a single resume PDF.

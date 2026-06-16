@@ -98,3 +98,30 @@ class TestingConfig(Config):
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     RATELIMIT_ENABLED = False
     PRESERVE_CONTEXT_ON_EXCEPTION = False
+
+def validate_production_config(config):
+    """
+    Validates required settings for production environment.
+    """
+    import os
+    
+    # 1. SECRET_KEY validation
+    secret_key = config.get("SECRET_KEY")
+    if not secret_key or secret_key == "default-synapse-cv-secret-key-change-in-prod":
+        raise ValueError("Production Error: SECRET_KEY must be set to a secure, custom value in production.")
+        
+    # 2. Database URL validation
+    db_uri = config.get("SQLALCHEMY_DATABASE_URI")
+    if not db_uri or db_uri.startswith("sqlite://") or not os.environ.get("DATABASE_URL"):
+        raise ValueError("Production Error: DATABASE_URL must be configured with a production database in production.")
+        
+    # 3. OAuth secrets if OAuth is required
+    oauth_required = os.environ.get("OAUTH_REQUIRED", "false").lower() == "true"
+    if oauth_required:
+        if not config.get("GOOGLE_CLIENT_ID") or not config.get("GOOGLE_CLIENT_SECRET"):
+            raise ValueError("Production Error: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be configured when OAuth is required.")
+            
+    # 4. At least one AI provider key
+    if not config.get("GROQ_API_KEY") and not config.get("GEMINI_API_KEY"):
+        raise ValueError("Production Error: At least one AI provider API key (GROQ_API_KEY or GEMINI_API_KEY) must be configured in production.")
+

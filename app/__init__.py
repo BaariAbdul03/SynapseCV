@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from werkzeug.exceptions import HTTPException
 
 from app.config import DevelopmentConfig, ProductionConfig, TestingConfig
-from app.extensions import limiter, talisman, cors, db, migrate, login_manager, oauth
+from app.extensions import limiter, talisman, cors, db, migrate, login_manager, oauth, csrf
 
 # Ensure environment variables are loaded early
 load_dotenv()
@@ -34,6 +34,11 @@ def create_app(config_class=None):
             
     app.config.from_object(config_class)
     
+    # Enforce production validation if in production config
+    if config_class == ProductionConfig or app.config.get("ENV") == "production":
+        from app.config import validate_production_config
+        validate_production_config(app.config)
+    
     # 2. Configure Structured Logging
     from app.utils.logging import setup_logger
     setup_logger(app)
@@ -41,6 +46,7 @@ def create_app(config_class=None):
     # 3. Initialize Extensions
     limiter.init_app(app)
     cors.init_app(app)
+    csrf.init_app(app)
     
     # Talisman only active/strict in production to avoid local HTTPS hassles
     if not app.debug and not app.testing:

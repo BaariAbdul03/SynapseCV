@@ -216,6 +216,7 @@
         </div>
 
         <form action="{{ url_for('auth.google_sandbox_callback') }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="submit-btn" type="submit">
                 <span>Authorize Sandbox Session</span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>

@@ -1,5 +1,8 @@
 import re
 import logging
+from urllib.parse import urlparse
+from typing import List
+from pydantic import BaseModel, Field, field_validator
 
 logger = logging.getLogger(__name__)
 
@@ -53,3 +56,149 @@ def validate_pdf_mime(file_stream) -> bool:
     except Exception as e:
         logger.error(f"Error during MIME validation: {e}", exc_info=True)
         return False
+
+# --- AI Output Validation ---
+
+class AIAnalysisResult(BaseModel):
+    name: str = Field(default="Not Found")
+    email: str = Field(default="Not Found")
+    phone: str = Field(default="Not Found")
+    github_url: str = Field(default="Not Found")
+    linkedin_url: str = Field(default="Not Found")
+    education: List[str] = Field(default_factory=list)
+    skills: List[str] = Field(default_factory=list)
+    match_percentage: int = Field(default=0, ge=0, le=100)
+    detected_role: str = Field(default="Unknown Role")
+    missing_keywords: List[str] = Field(default_factory=list)
+    profile_summary: str = Field(default="")
+    scoring_reasoning: str = Field(default="")
+
+    @field_validator("github_url", mode="before")
+    @classmethod
+    def validate_github_url(cls, v):
+        if v is None:
+            return "Not Found"
+        v_str = str(v).strip()
+        if not v_str or v_str.lower() in ('not found', 'none', ''):
+            return "Not Found"
+        
+        # Prevent javascript / data / vbscript protocols
+        if any(v_str.lower().startswith(proto) for proto in ('javascript:', 'data:', 'vbscript:')):
+            return "Not Found"
+            
+        url_to_parse = v_str
+        if not (url_to_parse.startswith('http://') or url_to_parse.startswith('https://')):
+            # If it's just a username/handle (letters, numbers, hyphens)
+            if re.match(r'^[a-zA-Z0-9\-]+$', url_to_parse):
+                return f"https://github.com/{url_to_parse}"
+            url_to_parse = 'https://' + url_to_parse
+            
+        try:
+            parsed = urlparse(url_to_parse)
+            netloc = parsed.netloc.lower()
+            if not netloc:
+                return "Not Found"
+            # Whitelist github.com and www.github.com
+            if netloc in ('github.com', 'www.github.com'):
+                return url_to_parse
+            return "Not Found"
+        except Exception:
+            return "Not Found"
+
+    @field_validator("linkedin_url", mode="before")
+    @classmethod
+    def validate_linkedin_url(cls, v):
+        if v is None:
+            return "Not Found"
+        v_str = str(v).strip()
+        if not v_str or v_str.lower() in ('not found', 'none', ''):
+            return "Not Found"
+            
+        # Prevent javascript / data / vbscript protocols
+        if any(v_str.lower().startswith(proto) for proto in ('javascript:', 'data:', 'vbscript:')):
+            return "Not Found"
+            
+        url_to_parse = v_str
+        if not (url_to_parse.startswith('http://') or url_to_parse.startswith('https://')):
+            # If it's just a username/handle (letters, numbers, hyphens, underscores)
+            if re.match(r'^[a-zA-Z0-9\-_]+$', url_to_parse):
+                return f"https://linkedin.com/in/{url_to_parse}"
+            url_to_parse = 'https://' + url_to_parse
+            
+        try:
+            parsed = urlparse(url_to_parse)
+            netloc = parsed.netloc.lower()
+            if not netloc:
+                return "Not Found"
+            # Whitelist linkedin.com, www.linkedin.com, and regional/subdomains
+            if netloc == 'linkedin.com' or netloc.endswith('.linkedin.com'):
+                return url_to_parse
+            return "Not Found"
+        except Exception:
+            return "Not Found"
+
+    @field_validator("match_percentage", mode="before")
+    @classmethod
+    def parse_match_percentage(cls, v):
+        if v is None:
+            return 0
+        if isinstance(v, str):
+            # Parse percentage like "75%" or "75"
+            v = v.replace("%", "").strip()
+            match = re.search(r'\d+', v)
+            if match:
+                return int(match.group())
+            return 0
+        try:
+            return int(v)
+        except (ValueError, TypeError):
+            return 0
+
+    @field_validator("skills", "missing_keywords", mode="before")
+    @classmethod
+    def parse_list_with_split(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, str):
+            if "," in v:
+                return [item.strip() for item in v.split(",") if item.strip()]
+            return [v.strip()]
+        if isinstance(v, list):
+            return [str(item).strip() for item in v if item is not None]
+        return []
+
+    @field_validator("education", mode="before")
+    @classmethod
+    def parse_education_list(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, str):
+            if ";" in v:
+                return [item.strip() for item in v.split(";") if item.strip()]
+            if "\n" in v:
+                return [item.strip() for item in v.split("\n") if item.strip()]
+            return [v.strip()]
+        if isinstance(v, list):
+            return [str(item).strip() for item in v if item is not None]
+        return []
+
+    @field_validator("scoring_reasoning")
+    @classmethod
+    def validate_scoring_reasoning(cls, v, info):
+        match_percentage = info.data.get("match_percentage")
+        if match_percentage is not None:
+            # Check if text explicitly says "Final: X" or similar
+            match = re.search(r'(?:Final|Final Score|Score):\s*(\d+)', v, re.IGNORECASE)
+            if match:
+                final_val = int(match.group(1))
+                if final_val != match_percentage:
+                    raise ValueError(f"Scoring consistency mismatch: match_percentage is {match_percentage} but Final score in reasoning is {final_val}")
+        return v
+
+def validate_ai_output(data: dict) -> dict:
+    """
+    Validates and normalizes AI analysis JSON using Pydantic.
+    Raises ValidationError or ValueError if data does not conform.
+    """
+    validated = AIAnalysisResult(**data)
+    return validated.model_dump()

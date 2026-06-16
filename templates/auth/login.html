@@ -317,6 +317,7 @@
 
         <!-- Traditional Login Form -->
         <form action="{{ url_for('auth.login') }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label class="form-label" for="email">Email Address</label>
                 <input class="form-input" type="email" id="email" name="email" required placeholder="recruiter@company.com">

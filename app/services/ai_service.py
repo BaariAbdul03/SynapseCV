@@ -16,6 +16,7 @@ import time
 import re
 
 from flask import current_app, has_app_context
+from app.utils.validators import validate_ai_output
 
 logger = logging.getLogger(__name__)
 
@@ -295,19 +296,21 @@ class AIService:
         # ── Tier 1: Groq ────────────────────────────────────────────────────
         try:
             result = self._groq.analyze(resume_text, jd_text)
+            validated = validate_ai_output(result)
             logger.info("[AIService] Analysis completed via Groq (Tier 1).")
-            return result
+            return validated
         except Exception as groq_err:
-            logger.warning(f"[AIService] Groq unavailable: {groq_err}. Falling back to Gemini.")
+            logger.warning(f"[AIService] Groq failed or output invalid: {groq_err}. Falling back to Gemini.")
 
         # ── Tier 2 + 3: Gemini (handles its own internal fallback) ──────────
         try:
             result = self._gemini.analyze(resume_text, jd_text)
+            validated = validate_ai_output(result)
             logger.info("[AIService] Analysis completed via Gemini (Tier 2/3).")
-            return result
+            return validated
         except Exception as gemini_err:
-            logger.error(f"[AIService] All AI providers exhausted. Final error: {gemini_err}", exc_info=True)
+            logger.error(f"[AIService] All AI providers exhausted or invalid. Final error: {gemini_err}", exc_info=True)
             raise RuntimeError(
-                f"All AI providers are currently unavailable. Please try again later. "
+                f"All AI providers are currently unavailable or returned invalid schemas. Please try again later. "
                 f"Last error: {gemini_err}"
             )

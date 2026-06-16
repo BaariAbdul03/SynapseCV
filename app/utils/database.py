@@ -60,6 +60,23 @@ def ensure_database_compatibility() -> None:
     if engine.dialect.name == "postgresql" and "api_keys" in tables and "key_prefix" in api_key_columns:
         ddl_statements.append("ALTER TABLE api_keys ALTER COLUMN key_prefix TYPE VARCHAR(32)")
 
+    if engine.dialect.name == "postgresql":
+        try:
+            with engine.connect() as connection:
+                result = connection.execute(text(
+                    "SELECT c.relname FROM pg_class c "
+                    "JOIN pg_namespace n ON n.oid = c.relnamespace "
+                    "WHERE n.nspname = 'public' AND c.relrowsecurity = true"
+                ))
+                rls_enabled_tables = {row[0] for row in result.all()}
+        except Exception:
+            logger.warning("Failed to query existing RLS status, defaulting to check-and-apply.")
+            rls_enabled_tables = set()
+
+        for table in ["users", "analyses", "api_keys", "role_templates"]:
+            if table in tables and table not in rls_enabled_tables:
+                ddl_statements.append(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
+
     if not ddl_statements:
         return
 

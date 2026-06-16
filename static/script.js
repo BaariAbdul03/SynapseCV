@@ -57,6 +57,23 @@ document.addEventListener("DOMContentLoaded", () => {
     let parsedResultData = null; // Cache parsed JSON response
     let activeBatchData = null; // Cache batch results
 
+    // CSRF helper
+    const getCsrfToken = () => {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute("content") : "";
+    };
+
+    // XSS mitigation HTML escaper
+    const escapeHtml = (str) => {
+        if (!str) return "";
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    };
+
     // Configure PDF.js worker
     pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
 
@@ -94,16 +111,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
             modal.innerHTML = `
                 <div style="background: #11121b; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; width: 90%; max-width: 400px; padding: 1.5rem; box-shadow: 0 20px 40px rgba(0,0,0,0.5); transform: scale(0.9); transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);">
-                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.75rem;">
+                     <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.75rem;">
                         <div style="background: ${isDanger ? 'rgba(239, 68, 68, 0.12)' : 'rgba(0, 210, 211, 0.12)'}; color: ${isDanger ? '#ef4444' : 'var(--accent-secondary)'}; border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${isDanger ? '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/>' : '<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="16" y2="12"/><line x1="12" x2="12.01" y1="8" y2="8"/>'}</svg>
                         </div>
-                        <h4 style="font-family: var(--font-heading); font-size: 0.9rem; font-weight: 700; color: white; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">${title}</h4>
+                        <h4 style="font-family: var(--font-heading); font-size: 0.9rem; font-weight: 700; color: white; margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">${escapeHtml(title)}</h4>
                     </div>
                     <p style="font-size: 0.8rem; color: #a0aec0; line-height: 1.5; margin: 0 0 1.5rem 0;">${message}</p>
                     <div style="display: flex; gap: 0.6rem; justify-content: flex-end;">
-                        <button type="button" id="confirm-modal-cancel" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 0.45rem 0.9rem; color: #a0aec0; font-size: 0.75rem; cursor: pointer; transition: all 0.2s ease;">${cancelText}</button>
-                        <button type="button" id="confirm-modal-ok" style="background: ${isDanger ? '#ef4444' : 'var(--accent-secondary)'}; border: none; border-radius: 8px; padding: 0.45rem 0.9rem; color: white; font-weight: 600; font-size: 0.75rem; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 12px ${isDanger ? 'rgba(239, 68, 68, 0.2)' : 'rgba(0, 210, 211, 0.2)'};">${confirmText}</button>
+                        <button type="button" id="confirm-modal-cancel" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 0.45rem 0.9rem; color: #a0aec0; font-size: 0.75rem; cursor: pointer; transition: all 0.2s ease;">${escapeHtml(cancelText)}</button>
+                        <button type="button" id="confirm-modal-ok" style="background: ${isDanger ? '#ef4444' : 'var(--accent-secondary)'}; border: none; border-radius: 8px; padding: 0.45rem 0.9rem; color: white; font-weight: 600; font-size: 0.75rem; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 12px ${isDanger ? 'rgba(239, 68, 68, 0.2)' : 'rgba(0, 210, 211, 0.2)'};">${escapeHtml(confirmText)}</button>
                     </div>
                 </div>
             `;
@@ -267,15 +284,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 card.innerHTML = `
                     <div style="min-width: 0; flex: 1;">
                         <div style="font-weight: 600; font-size: 0.9rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            ${item.name || "Unknown Candidate"}
+                            ${escapeHtml(item.name || "Unknown Candidate")}
                         </div>
                         <div style="font-size: 0.75rem; color: #718096; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.15rem;">
-                            ${item.target_role || item.detected_role || "Inferred Role"}
+                            ${escapeHtml(item.target_role || item.detected_role || "Inferred Role")}
                         </div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 0.75rem;">
                         <span style="font-size: 0.85rem; font-weight: 700; color: ${scoreColor}; background: ${scoreColor}15; padding: 0.2rem 0.5rem; border-radius: 6px;">
-                            ${item.match_percentage}%
+                            ${escapeHtml(item.match_percentage)}%
                         </span>
                         <button class="delete-archive-btn" style="background: none; border: none; color: #718096; cursor: pointer; padding: 0.25rem; display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: var(--transition-smooth);">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
@@ -294,7 +311,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 deleteBtn.addEventListener("click", async (e) => {
                     e.stopPropagation();
-                    const confirmed = await showConfirm(`Are you sure you want to remove <strong>${item.name || "Candidate"}</strong> from your archives?`, {
+                    const confirmed = await showConfirm(`Are you sure you want to remove <strong>${escapeHtml(item.name || "Candidate")}</strong> from your archives?`, {
                         title: "Remove Candidate",
                         confirmText: "Remove",
                         danger: true
@@ -302,7 +319,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (!confirmed) return;
                     
                     try {
-                        const delResp = await fetch(`/archives/${item.id}`, { method: "DELETE" });
+                        const delResp = await fetch(`/archives/${item.id}`, {
+                            method: "DELETE",
+                            headers: {
+                                "X-CSRFToken": getCsrfToken()
+                            }
+                        });
                         if (!delResp.ok) throw new Error("Failed to delete record");
                         
                         card.remove();
@@ -505,6 +527,9 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const response = await fetch("/parse", {
                 method: "POST",
+                headers: {
+                    "X-CSRFToken": getCsrfToken()
+                },
                 body: formData
             });
 
@@ -603,10 +628,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // 4.1 Demographic block
         candidateNameEl.textContent = data.name || "Not Found";
-        detectedRoleEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24M14.83 9.17l4.24-4.24M14.83 14.83l4.24 4.24M9.17 14.83l-4.24 4.24"/></svg> ${data.target_role || data.detected_role || "Inferred Role"}`;
+        detectedRoleEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24M14.83 9.17l4.24-4.24M14.83 14.83l4.24 4.24M9.17 14.83l-4.24 4.24"/></svg> ${escapeHtml(data.target_role || data.detected_role || "Inferred Role")}`;
         
-        emailEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg> ${data.email || "Not Found"}`;
-        phoneEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> ${data.phone || "Not Found"}`;
+        emailEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg> ${escapeHtml(data.email || "Not Found")}`;
+        phoneEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg> ${escapeHtml(data.phone || "Not Found")}`;
 
         // GitHub & LinkedIn links
         const githubEl = document.getElementById("res-github");
@@ -615,7 +640,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const ghUrl = data.github_url || data.github || "";
             if (ghUrl && ghUrl.toLowerCase() !== "not found" && ghUrl !== "") {
                 githubEl.style.display = "flex";
-                githubEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg> <a href="${ghUrl.startsWith('http') ? ghUrl : 'https://' + ghUrl}" target="_blank" rel="noopener" style="color: #a0aec0; text-decoration: none;">${ghUrl.replace('https://github.com/', '').replace('https://', '')}</a>`;
+                const safeGhUrl = (ghUrl.startsWith('http://') || ghUrl.startsWith('https://')) ? ghUrl : 'https://' + ghUrl;
+                githubEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg> <a href="${escapeHtml(safeGhUrl)}" target="_blank" rel="noopener" style="color: #a0aec0; text-decoration: none;">${escapeHtml(ghUrl.replace('https://github.com/', '').replace('https://', ''))}</a>`;
             } else {
                 githubEl.style.display = "none";
             }
@@ -624,7 +650,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const liUrl = data.linkedin_url || data.linkedin || "";
             if (liUrl && liUrl.toLowerCase() !== "not found" && liUrl !== "") {
                 linkedinEl.style.display = "flex";
-                linkedinEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg> <a href="${liUrl.startsWith('http') ? liUrl : 'https://' + liUrl}" target="_blank" rel="noopener" style="color: #a0aec0; text-decoration: none;">${liUrl.replace('https://www.linkedin.com/in/', '').replace('https://', '')}</a>`;
+                const safeLiUrl = (liUrl.startsWith('http://') || liUrl.startsWith('https://')) ? liUrl : 'https://' + liUrl;
+                linkedinEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg> <a href="${escapeHtml(safeLiUrl)}" target="_blank" rel="noopener" style="color: #a0aec0; text-decoration: none;">${escapeHtml(liUrl.replace('https://www.linkedin.com/in/', '').replace('https://', ''))}</a>`;
             } else {
                 linkedinEl.style.display = "none";
             }
@@ -649,7 +676,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         .replace(/\(\s*([^)]+)\s*\)/g, '($1)')  // Clean internal bracket spaces
                         .replace(/\s{2,}/g, ' ')  // Collapse multiple spaces
                         .trim();
-                    pill.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg> ${cleanEdu}`;
+                    pill.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></svg> ${escapeHtml(cleanEdu)}`;
                     educationContainer.appendChild(pill);
                 }
             });
@@ -1013,8 +1040,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (item.error) {
                 tr.innerHTML = `
                     <td style="padding: 1rem 0.75rem; text-align: center; color: #ef4444; font-weight: bold;">-</td>
-                    <td style="padding: 1rem 0.75rem; color: #a0aec0; font-family: monospace;">${item.filename}</td>
-                    <td style="padding: 1rem 0.75rem; color: #ef4444;" colspan="3">Failed: ${item.error}</td>
+                    <td style="padding: 1rem 0.75rem; color: #a0aec0; font-family: monospace;">${escapeHtml(item.filename)}</td>
+                    <td style="padding: 1rem 0.75rem; color: #ef4444;" colspan="3">Failed: ${escapeHtml(item.error)}</td>
                     <td style="padding: 1rem 0.75rem; text-align: center;">-</td>
                 `;
             } else {
@@ -1025,14 +1052,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 tr.innerHTML = `
                     <td style="padding: 1rem 0.75rem; text-align: center; font-weight: 700; color: #718096;">#${index + 1}</td>
-                    <td style="padding: 1rem 0.75rem; font-weight: 600; color: white;">${item.name || "Unknown"}</td>
-                    <td style="padding: 1rem 0.75rem; color: #cbd5e0;">${item.target_role || item.detected_role || "Not Inferred"}</td>
+                    <td style="padding: 1rem 0.75rem; font-weight: 600; color: white;">${escapeHtml(item.name || "Unknown")}</td>
+                    <td style="padding: 1rem 0.75rem; color: #cbd5e0;">${escapeHtml(item.target_role || item.detected_role || "Not Inferred")}</td>
                     <td style="padding: 1rem 0.75rem; text-align: center;">
                         <span style="font-size: 0.8rem; font-weight: 700; color: ${scoreColor}; background: ${scoreColor}15; padding: 0.2rem 0.5rem; border-radius: 6px; display: inline-block;">
-                            ${score}%
+                            ${escapeHtml(score)}%
                         </span>
                     </td>
-                    <td style="padding: 1rem 0.75rem; color: #a0aec0; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${(item.skills || []).join(", ")}">${skillsText}</td>
+                    <td style="padding: 1rem 0.75rem; color: #a0aec0; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml((item.skills || []).join(", "))}">${escapeHtml(skillsText)}</td>
                     <td style="padding: 1rem 0.75rem; text-align: center;">
                         <button class="inspect-btn btn-secondary" style="margin: 0; padding: 0.35rem 0.65rem; font-size: 0.75rem; width: auto; background: rgba(0, 210, 211, 0.1); border-color: rgba(0, 210, 211, 0.3); color: var(--accent-secondary);">
                             Inspect
@@ -1069,7 +1096,10 @@ document.addEventListener("DOMContentLoaded", () => {
             try {
                 const response = await fetch("/roles", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCsrfToken()
+                    },
                     body: JSON.stringify({ role_name: roleName, job_description: jdText })
                 });
                 
@@ -1129,8 +1159,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 keyRow.innerHTML = `
                     <div style="min-width: 0; flex: 1; padding-right: 0.5rem;">
-                        <div style="font-weight: 600; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${k.name}</div>
-                        <code style="font-size: 0.7rem; color: #718096; font-family: monospace;">${k.key_prefix}xxxx</code>
+                        <div style="font-weight: 600; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(k.name)}</div>
+                        <code style="font-size: 0.7rem; color: #718096; font-family: monospace;">${escapeHtml(k.key_prefix)}xxxx</code>
                     </div>
                     <button class="revoke-key-btn" style="background: none; border: none; color: #718096; cursor: pointer; padding: 0.25rem; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: var(--transition-smooth);">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
@@ -1147,7 +1177,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     revokeBtn.style.background = "none";
                 });
                 revokeBtn.addEventListener("click", async () => {
-                    const confirmed = await showConfirm(`Are you sure you want to revoke key "<strong>${k.name}</strong>"? This action cannot be undone.`, {
+                    const confirmed = await showConfirm(`Are you sure you want to revoke key "<strong>${escapeHtml(k.name)}</strong>"? This action cannot be undone.`, {
                         title: "Revoke API Key",
                         confirmText: "Revoke Key",
                         danger: true
@@ -1155,7 +1185,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (!confirmed) return;
 
                     try {
-                        const delResp = await fetch(`/api/v1/keys/${k.id}`, { method: "DELETE" });
+                        const delResp = await fetch(`/api/v1/keys/${k.id}`, {
+                            method: "DELETE",
+                            headers: {
+                                "X-CSRFToken": getCsrfToken()
+                            }
+                        });
                         if (!delResp.ok) throw new Error("Revocation failed");
                         keyRow.remove();
                         showNotification("API Key revoked successfully.", "success");
@@ -1186,7 +1221,10 @@ document.addEventListener("DOMContentLoaded", () => {
             try {
                 const response = await fetch("/api/v1/keys", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCsrfToken()
+                    },
                     body: JSON.stringify({ name: keyName })
                 });
 
@@ -1323,7 +1361,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>' 
                 : '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>'
             }
-            <span>${message}</span>
+            <span>${escapeHtml(message)}</span>
         `;
         
         document.body.appendChild(toast);

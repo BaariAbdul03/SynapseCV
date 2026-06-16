@@ -6,6 +6,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
 from authlib.integrations.flask_client import OAuth
+from flask_wtf.csrf import CSRFProtect
 
 # Centralized extension instances
 limiter = Limiter(key_func=get_remote_address)
@@ -15,3 +16,4 @@ db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
 oauth = OAuth()
+csrf = CSRFProtect()
