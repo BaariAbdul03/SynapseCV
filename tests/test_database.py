@@ -1,5 +1,4 @@
 from unittest.mock import MagicMock, patch
-from sqlalchemy import text
 from app.utils.database import ensure_database_compatibility
 
 def test_ensure_database_compatibility_postgresql():

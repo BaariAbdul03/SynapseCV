@@ -37,7 +37,7 @@ def main():
                     connection.execute(text(sql))
                 
                 # Check for existing 'deny_all' policy
-                policy_check = text(f"SELECT 1 FROM pg_policies WHERE tablename = :table AND policyname = 'deny_all'")
+                policy_check = text("SELECT 1 FROM pg_policies WHERE tablename = :table AND policyname = 'deny_all'")
                 has_policy = connection.execute(policy_check, {"table": table}).fetchone()
                 
                 if not has_policy:
