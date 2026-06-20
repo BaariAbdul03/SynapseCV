@@ -35,6 +35,16 @@ def main():
                     sql = f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY"
                     print(f"Executing: {sql}")
                     connection.execute(text(sql))
+                
+                # Check for existing 'deny_all' policy
+                policy_check = text(f"SELECT 1 FROM pg_policies WHERE tablename = :table AND policyname = 'deny_all'")
+                has_policy = connection.execute(policy_check, {"table": table}).fetchone()
+                
+                if not has_policy:
+                    policy_sql = f"CREATE POLICY \"deny_all\" ON {table} FOR ALL USING (false)"
+                    print(f"Executing: {policy_sql}")
+                    connection.execute(text(policy_sql))
+                    
             print("\nSuccessfully updated Supabase Row Level Security configurations!")
     except Exception as e:
         print(f"\nError applying RLS: {e}")

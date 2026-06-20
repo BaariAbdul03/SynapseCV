@@ -69,13 +69,21 @@ def ensure_database_compatibility() -> None:
                     "WHERE n.nspname = 'public' AND c.relrowsecurity = true"
                 ))
                 rls_enabled_tables = {row[0] for row in result.all()}
+                
+                policy_result = connection.execute(text(
+                    "SELECT tablename FROM pg_policies WHERE schemaname = 'public' AND policyname = 'deny_all'"
+                ))
+                tables_with_policy = {row[0] for row in policy_result.all()}
         except Exception:
             logger.warning("Failed to query existing RLS status, defaulting to check-and-apply.")
             rls_enabled_tables = set()
+            tables_with_policy = set()
 
         for table in ["users", "analyses", "api_keys", "role_templates"]:
             if table in tables and table not in rls_enabled_tables:
                 ddl_statements.append(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
+            if table in tables and table not in tables_with_policy:
+                ddl_statements.append(f"CREATE POLICY \"deny_all\" ON {table} FOR ALL USING (false)")
 
     if not ddl_statements:
         return
